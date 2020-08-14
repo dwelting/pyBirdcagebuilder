@@ -13,3 +13,8 @@ The program is written in Python3.
 Download the project and run the Python script (pyBirdcagebuilder.py). 
 
 You might have to install Python before you can run it. [(Download)](http://www.python.org/downloads)
+
+## Images
+<img src="images/settings.png?raw=true"/>
+<img src="images/results.png?raw=true"/>
+<img src="images/More_information.png?raw=true"/>
