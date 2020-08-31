@@ -14,6 +14,9 @@ Download the project and run the Python script (pyBirdcagebuilder.py).
 
 You might have to install Python before you can run it. [(Download)](http://www.python.org/downloads)
 
+## References
+Chin CL, Collins CM, Li S, Dardzinski BJ, Smith MB. BirdcageBuilder: design of specified-geometry birdcage coils with desired current pattern and resonant frequency. Concepts in Magnetic Resonance: An Educational Journal. 2002 Jun;15(2):156-63.
+
 ## Images
 <img src="images/settings.png?raw=true"/>
 <img src="images/results.png?raw=true"/>
