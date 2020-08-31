@@ -28,6 +28,7 @@ ICON_FOLDER = os.path.join(os.getcwd(), "icon", "")
 MAX_PRECISION = 2
 
 
+
 class MainApplication:
 	WINDOWSIZEx = 500
 	WINDOWSIZEy = 550
@@ -62,7 +63,6 @@ class MainApplication:
 		self.guiTabResults = MyResultsTab(self)
 		self.guiTabMoreInfo = MyMoreInfoTab(self)
 
-
 		self.tab_control.add(self.guiTabSettings.tab, text=' Settings ')
 		self.tab_control.add(self.guiTabResults.tab, text=' Results ')
 		self.tab_control.add(self.guiTabMoreInfo.tab, text=' More Information ')
@@ -74,11 +74,10 @@ class MainApplication:
 		
 	def _setWindow(self, window):
 		window.title(f"{PROGRAM_NAME}")  # {VERSION}")
+
+		my_tk.centerWindow(window, self.WINDOWSIZEx, self.WINDOWSIZEy)
 		window.maxsize(self.WINDOWSIZEx, self.WINDOWSIZEy)
 		window.minsize(self.WINDOWSIZEx, self.WINDOWSIZEy)
-		x = (window.winfo_screenwidth() / 2) - (self.WINDOWSIZEx / 2)
-		y = (window.winfo_screenheight() / 2) - (self.WINDOWSIZEy / 2)
-		window.geometry('+%d+%d' % (x, y))
 		window.resizable(0, 0)
 
 		try:
@@ -487,18 +486,18 @@ class MySettingsTab:
 	
 	def validateInputs(self):
 		inputs_ = [self.v_coil_diameter.get(),
-		           self.v_res_freq.get(),
-		           self.v_nr_of_legs.get(),
-		           self.v_leg_length.get(),
-		           self.v_er_width.get(),
-		           self.v_leg_width.get(),
-		           self.v_er_od.get(),
-		           self.v_er_id.get(),
-		           self.v_leg_od.get(),
-		           self.v_leg_id.get(),
-		           self.v_bp_cap.get(),
-		           self.v_coil_long_diameter.get(),
-		           self.v_coil_short_diameter.get()]
+				   self.v_res_freq.get(),
+				   self.v_nr_of_legs.get(),
+				   self.v_leg_length.get(),
+				   self.v_er_width.get(),
+				   self.v_leg_width.get(),
+				   self.v_er_od.get(),
+				   self.v_er_id.get(),
+				   self.v_leg_od.get(),
+				   self.v_leg_id.get(),
+				   self.v_bp_cap.get(),
+				   self.v_coil_long_diameter.get(),
+				   self.v_coil_short_diameter.get()]
 		for input_ in inputs_:
 			if input_ == 0:
 				mb.showwarning("Input zero", "One or more inputs are zero.\nPlease input valid values.")
@@ -580,11 +579,16 @@ class MySettingsTab:
 class MyAboutWindow:
 	def __init__(self):
 		self.top = tk.Toplevel()
+		self.top.transient(root)
+		self.top.update_idletasks()
+		self.top.withdraw()
 		self.top.title(f"About {PROGRAM_NAME}")  # {VERSION}")
 		self.top.maxsize(400, 450)
 		self.top.resizable(0, 0)
-
 		self._setGui()
+		self._centerWindow(self.top)
+		self.top.deiconify()
+
 		
 	def _setGui(self):
 		# logo
@@ -622,22 +626,22 @@ class MyAboutWindow:
 
 		frm_button.grid(column=0, row=4, columnspan=2, sticky=tk.N, pady=(10, 10))
 
-		self._centerWindow(self.top)
-
 	@staticmethod
 	def _centerWindow(win):
 		win.update_idletasks()
 		width = win.winfo_width()
 		height = win.winfo_height()
-		x = (win.winfo_screenwidth() // 2) - (width // 2)
-		y = (win.winfo_screenheight() // 2) - (height // 2)
-		win.geometry('{}x{}+{}+{}'.format(width, height, x, y))
+
+		my_tk.centerWindow(win, width, height)
 
 	def _showLicense(self):
 		with open(os.path.join(os.getcwd(), "LICENSE.md"), 'r') as license_file:
 			license_ = license_file.read()
 
 		top = tk.Toplevel()
+		top.transient(root)
+		top.update_idletasks()
+		top.withdraw()
 		top.title(f"License")  # {VERSION}")
 		top.resizable(0, 0)
 
@@ -652,6 +656,7 @@ class MyAboutWindow:
 		text.pack()
 
 		self._centerWindow(top)
+		top.deiconify()
 
 
 class CalculateBirdcage:
@@ -733,7 +738,7 @@ class CalculateBirdcage:
 				n4 = 0
 				n5 = self.er_segment_length / 2 * (2 * i - 1)
 				# for (int n6 = 1; n5 - n4 > 0.0; n4 += self.delta * math.sqrt(1.0 + math.pow(self.coil_shortradius / self.coil_radius * n2, 2.0)
-				#       / (self.coil_radius * self.coil_radius - math.pow(n2, 2.0))), ++n6) { #original
+				#	   / (self.coil_radius * self.coil_radius - math.pow(n2, 2.0))), ++n6) { #original
 				n6 = 1
 				while n5 - n4 > 0:  # todo check if correct, the original for-loop was strange
 					n4 += self.delta * math.sqrt(1 + ((self.coil_shortradius / self.coil_radius) * n2)**2 / (self.coil_radius**2 - n2**2))
@@ -1031,8 +1036,8 @@ if __name__ == "__main__":
 	#todo set focus on tabs when clicking them (switching tabs), instead of widgets in the tab
 	#todo add config. Saving/loading the settings for a specific coil
 	#todo break the tab gui classes into more methods for readability
-
 	root = tk.Tk()
+	root.withdraw()
 
 	default_font = font.nametofont("TkDefaultFont")  # set default font
 	default_font.configure(family='freemono', size=11)
@@ -1046,4 +1051,6 @@ if __name__ == "__main__":
 	myfont_small.configure(size=8)
 
 	mygui = MainApplication(root)
+	root.deiconify()
+
 	root.mainloop()

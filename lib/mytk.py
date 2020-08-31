@@ -189,3 +189,29 @@ class MyScale(tk.Scale):
 		if variable is not None:
 			variable.trace("w", lambda *a: self.set(variable.get()))  # changes the slider depending on programmatically changed var
 		self.bind('<Button-1>', lambda e: self.event_generate('<Button-3>', x=e.x, y=e.y))  # makes left-click behave like right-click, making the scale jump instantly to destination
+
+
+def getScreenDimensions():
+	r = tk.Tk()
+	r.update_idletasks()
+	r.attributes('-fullscreen', True)
+	r.state('iconic')
+	geometry = r.winfo_geometry()
+	r.destroy()
+
+	geometry = geometry.split('x')
+	width = geometry[0]
+	height = geometry[1].split('+')[0]
+	return int(width), int(height)
+
+
+def centerWindow(win, win_x, win_y):
+	import os
+	if os.name == 'posix':
+		w, h = getScreenDimensions() 	# only way in Linux to get a centered window on the primary screen with dual monitor
+	else:
+		w = win.winfo_screenwidth()
+		h = win.winfo_screenheight()
+	x = (w // 2) - (win_x // 2)
+	y = (h // 2) - (win_y // 2)
+	win.geometry('+%d+%d' % (x, y))
