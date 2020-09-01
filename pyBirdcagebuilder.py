@@ -2,7 +2,7 @@
 
 """
 Description:	pyBirdcagebuilder is a program that calculates ideal capacitor values for birdcage coil designs.
-				This program is based on the original Birdcagebuilder program provided by PennState Health.
+				This program is based on the original Birdcage Builder program provided by PennState Health.
 				(https://research.med.psu.edu/departments/center-for-nmr-research/software/birdcage-builder-web-app/)
 Author: 		Dimitri Welting
 Website: 		http://github.com/dwelting/pyBirdcagebuilder
@@ -663,7 +663,7 @@ class MyAboutWindow:
 
 
 class CalculateBirdcage:
-	# All math is copied from the original Birdcagebuilder made by PennState Health, and converted to Python
+	# All math is copied from the original Birdcage Builder made by PennState Health, and converted to Python
 
 	def __init__(self, parent):
 		self.parent = parent

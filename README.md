@@ -4,7 +4,7 @@
 ## The design
 This project contains pyBirdcagebuilder, a program that calculates ideal capacitor values for birdcage coil designs.
 
-The program is based on the [Birdcagebuilder program by PennState Health](https://research.med.psu.edu/departments/center-for-nmr-research/software/birdcage-builder-web-app/) which they have provided for free for a long time, but is becoming increasingly difficult to run on modern computers. 
+The program is based on the [Birdcage Builder program by PennState Health](https://research.med.psu.edu/departments/center-for-nmr-research/software/birdcage-builder-web-app/) which they have provided for free for a long time, but is becoming increasingly difficult to run on modern computers. 
 
 The program is written in Python3. 
 
