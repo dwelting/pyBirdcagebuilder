@@ -1,17 +1,17 @@
 """
-	Copyright (c) Dimitri Welting. All rights reserved.
-	http://github.com/dwelting
-	
-	This code is free to download and use. Any paid service providing this code is not endorsed by the author.
-	This code is licensed under the MIT License. The full text of the license can be found in the LICENSE file.
+Description:    Library with custom TKinter widgets or useful functions.
+Author: 	    Dimitri Welting
+Website:    	http://github.com/dwelting/
+License: 	    Copyright (c) 2020 Dimitri Welting. All rights reserved.
+				Distributed under the MIT license. The full text of the license can be found in the LICENSE file or on the above-mentioned website.
+				This code is free to download and use. Any paid service providing this code is not endorsed by the author.
 """
 
 import tkinter as tk
+from lib.logging import logger
+import os
 
-import logging
-logger = logging.getLogger(__name__)
-logging.basicConfig()
-logger.setLevel(logging.DEBUG)
+
 
 
 class MyEntry(tk.Entry):
@@ -188,7 +188,13 @@ class MyScale(tk.Scale):
 		super(MyScale, self).__init__(*args, **kwargs)
 		if variable is not None:
 			variable.trace("w", lambda *a: self.set(variable.get()))  # changes the slider depending on programmatically changed var
-		self.bind('<Button-1>', lambda e: self.event_generate('<Button-3>', x=e.x, y=e.y))  # makes left-click behave like right-click, making the scale jump instantly to destination
+
+		if os.name == 'posix':
+			button = '<Button-2>'
+		else:
+			button = '<Button-3>'
+		self.bind('<Button-1>', lambda e: self.event_generate(button, x=e.x, y=e.y))  # makes left-click behave like right-click, making the scale jump instantly to destination
+
 
 
 def getScreenDimensions():

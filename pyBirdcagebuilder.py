@@ -1,23 +1,23 @@
 #!/usr/bin/env python3
 
 """
-	Copyright (c) Dimitri Welting. All rights reserved.
-	Source code can be found at http://github.com/dwelting/pyBirdcagebuilder
-	This program is free to download and use. Any paid service providing this code is not endorsed by the author.
-
-	This program is based on the original Birdcagebuilder program provided by PennState Health.
-	(https://research.med.psu.edu/departments/center-for-nmr-research/software/birdcage-builder-web-app/)
-
-	This code is licensed under the MIT License. The full text of the license can be found in the LICENSE file or on the above-mentioned website.
+Description:	pyBirdcagebuilder is a program that calculates ideal capacitor values for birdcage coil designs.
+				This program is based on the original Birdcagebuilder program provided by PennState Health.
+				(https://research.med.psu.edu/departments/center-for-nmr-research/software/birdcage-builder-web-app/)
+Author: 		Dimitri Welting
+Website: 		http://github.com/dwelting/pyBirdcagebuilder
+License: 		Copyright (c) 2020 Dimitri Welting. All rights reserved.
+				Distributed under the MIT license. The full text of the license can be found in the LICENSE file or on the above-mentioned website.
+				This code is free to download and use. Any paid service providing this code is not endorsed by the author.
 """
 
 import tkinter as tk
 from tkinter import ttk, font
 from tkinter import messagebox as mb
-import lib.mytk as my_tk
+import lib.my_tk as my_tk
 import math
 import os
-import warnings
+from lib.logging import logger
 
 
 PROGRAM_NAME = "pyBirdcagebuilder"
@@ -26,7 +26,6 @@ WEBSITE = "github.com/dwelting/pyBirdcagebuilder"
 
 ICON_FOLDER = os.path.join(os.getcwd(), "icon", "")
 MAX_PRECISION = 2
-
 
 
 class MainApplication:
@@ -87,12 +86,13 @@ class MainApplication:
 				icon = "icon16.png"
 			window.iconphoto(True, tk.PhotoImage(file=ICON_FOLDER + icon))
 		except tk.TclError:
-			warnings.warn("Icon error: no application icon found?")
+			logger.warn("Icon error: no application icon found?")
 
 	def startCalculation(self):
-		if not self.guiTabSettings.validateInputs():
+		inputs_ = self.guiTabSettings.validateInputs()
+		if not inputs_:
 			return
-		
+		logger.info("Calculation started with values:\n\t\t\t" + "\n\t\t\t".join("{}: {}".format(k, v) for k, v in inputs_.items()))
 		self.calcCapacitance.calculate()
 		self.guiTabResults.drawCapacitors()
 		self.guiTabResults.drawGraph()
@@ -485,30 +485,33 @@ class MySettingsTab:
 		btn.grid(column=1, row=4, columnspan=3)
 	
 	def validateInputs(self):
-		inputs_ = [self.v_coil_diameter.get(),
-				   self.v_res_freq.get(),
-				   self.v_nr_of_legs.get(),
-				   self.v_leg_length.get(),
-				   self.v_er_width.get(),
-				   self.v_leg_width.get(),
-				   self.v_er_od.get(),
-				   self.v_er_id.get(),
-				   self.v_leg_od.get(),
-				   self.v_leg_id.get(),
-				   self.v_bp_cap.get(),
-				   self.v_coil_long_diameter.get(),
-				   self.v_coil_short_diameter.get()]
-		for input_ in inputs_:
-			if input_ == 0:
+		inputs_ = {"Resonance Frequency": self.v_res_freq.get(),
+					"Coil Diameter": self.v_coil_diameter.get(),
+					"Shield Diameter": self.v_shield_diameter.get(),
+					"Nr Of Legs": self.v_nr_of_legs.get(),
+					"Leg Length": self.v_leg_length.get(),
+					"Leg Width": self.v_leg_width.get(),
+					"Leg OD": self.v_leg_od.get(),
+					"Leg ID": self.v_leg_id.get(),
+					"ER Width": self.v_er_width.get(),
+					"ER OD": self.v_er_od.get(),
+					"ER ID": self.v_er_id.get(),
+					"Bandpass Capacitor": self.v_bp_cap.get(),
+					"Long Diameter": self.v_coil_long_diameter.get(),
+					"Short Diameter": self.v_coil_short_diameter.get()}
+
+		for key, value in inputs_.items():
+			if key == "Shield Diameter":
+				continue
+			if value == 0:
 				mb.showwarning("Input zero", "One or more inputs are zero.\nPlease input valid values.")
 				return False
-		
-		inputs_.append(self.v_shield_diameter.get())
-		if inputs_[0] == inputs_[-1]:
+
+		if inputs_["Shield Diameter"] == inputs_["Coil Diameter"]:
 			mb.showwarning("Zero shield distance", "Shield distance is equal to coil diameter.\nPlease input valid values.")
 			return False
 		
-		return True
+		return inputs_
 	
 	def setDefaults(self):
 		self.v_res_freq.set(120.6)
@@ -660,7 +663,7 @@ class MyAboutWindow:
 
 
 class CalculateBirdcage:
-	#All math is copied from the original Birdcagebuilder made by PennState Health, and converted to Python
+	# All math is copied from the original Birdcagebuilder made by PennState Health, and converted to Python
 
 	def __init__(self, parent):
 		self.parent = parent
@@ -1015,8 +1018,8 @@ class CalculateBirdcage:
 		# export results to gui
 		self.parent.guiTabMoreInfo.v_ind_self_er.set(self.er_self_ind)
 		self.parent.guiTabMoreInfo.v_ind_self_legs.set(self.leg_self_ind)
-		self.parent.guiTabMoreInfo.v_ind_eff_legs.set(self.legeff[int(self.nr_of_legs / 4 - 1)] * 1e9)
 		self.parent.guiTabMoreInfo.v_ind_eff_er.set(self.ereff[int(self.nr_of_legs / 4 - 1)] * 1e9)
+		self.parent.guiTabMoreInfo.v_ind_eff_legs.set(self.legeff[int(self.nr_of_legs / 4 - 1)] * 1e9)
 		self.parent.guiTabSettings.v_er_seg_length.set(self.er_segment_length)
 
 		if self.coil_shape == self.parent.ELLIPSE and not self.shortaxis:  # todo add export multiple C's @ ellipse
@@ -1024,18 +1027,19 @@ class CalculateBirdcage:
 		else:
 			self.parent.guiTabResults.v_cap_res.set(self.cap[int(self.nr_of_legs / 4 - 1)])
 
+		result = f""" Results: 
+			Result Capacitor: {self.parent.guiTabResults.v_cap_res.get()} pF 
+			Result ER Segment Length: {self.parent.guiTabSettings.v_er_seg_length.get()} nH
+			Result Self Inductance ER: {self.parent.guiTabMoreInfo.v_ind_self_er.get()} nH 
+			Result Self Inductance Legs: {self.parent.guiTabMoreInfo.v_ind_self_legs.get()} nH 
+			Result Effective Inductance ER: {self.parent.guiTabMoreInfo.v_ind_eff_er.get()} nH 
+			Result Effective Inductance Legs: {self.parent.guiTabMoreInfo.v_ind_eff_legs.get()} mm 
+		"""
+		# logger.info(result.replace('\t', ''))
+		logger.info(result)
+
 
 if __name__ == "__main__":
-	#todo elliptical:
-	# fix the elliptical coil math, something is not right. A practically circular elliptical coil should give same values on all C's?
-	# fix elliptical C/leg drawing in the capacitor graph
-	# add multiple C results on results tab
-	# add the text & b1 image on the results tab
-	# when done re-add the Options menu item to be able to switch between circle ellipse
-
-	#todo set focus on tabs when clicking them (switching tabs), instead of widgets in the tab
-	#todo add config. Saving/loading the settings for a specific coil
-	#todo break the tab gui classes into more methods for readability
 	root = tk.Tk()
 	root.withdraw()
 
@@ -1053,4 +1057,5 @@ if __name__ == "__main__":
 	mygui = MainApplication(root)
 	root.deiconify()
 
+	logger.info("Program start successfully")
 	root.mainloop()

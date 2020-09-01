@@ -2,3 +2,4 @@
 /.idea/*
 Thumbs.db
 *.directory 
+/log.log

@@ -1,0 +1,12 @@
+Todo list
+
+Ellipse:
+    Fix the elliptical coil math, something is not right. A practically circular elliptical coil should give same values on all C's?
+    Fix elliptical C/leg drawing in the capacitor graph
+    Add multiple C results on results tab
+    Add the text & b1 image on the results tab
+    When done re-add the Options menu item to be able to switch between circle ellipse
+
+Set focus on tabs when clicking them (switching tabs), instead of widgets in the tab
+Add config. Saving/loading the settings for a specific coil
+Break the tab gui classes into more methods for readability
