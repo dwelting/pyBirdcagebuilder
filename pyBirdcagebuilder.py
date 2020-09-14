@@ -501,22 +501,22 @@ class MySettingsTab:
 		return inputs_
 	
 	def setDefaults(self):
-		self.v_res_freq.set(120.6)
-		self.v_leg_length.set(40)  # 20)
+		self.v_res_freq.set(298)
+		self.v_nr_of_legs.set(12)
+		self.v_coil_diameter.set(30)
+		self.v_shield_diameter.set(34)
+		self.v_leg_length.set(20)
 		self.v_leg_width.set(0.5)
 		self.v_leg_od.set(1)
 		self.v_leg_id.set(0.6)
-		self.v_er_width.set(1.1)  # 0.5)
+		self.v_er_width.set(0.5)
 		self.v_er_od.set(1)
 		self.v_er_id.set(0.6)
-		self.v_coil_diameter.set(60)  # 15)
-		self.v_shield_diameter.set(64)  # 17)
-		self.v_nr_of_legs.set(24)  # 12)
 		self.v_bp_cap.set(56)
 
 		self.v_coil_shortaxis.set(self.parent.SHORT)
-		self.v_coil_long_diameter.set(20)
-		self.v_coil_short_diameter.set(5)
+		self.v_coil_long_diameter.set(40)
+		self.v_coil_short_diameter.set(30)
 
 	def _guiSettingsAdjust(self):
 		# adjusts the settings tab when clicking radiobuttons
