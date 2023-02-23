@@ -3,3 +3,4 @@
 Thumbs.db
 *.directory 
 /log.log
+__pycache__
