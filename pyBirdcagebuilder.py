@@ -20,7 +20,7 @@ License:        Copyright (c) 2023 Dimitri Welting. All rights reserved.
 # store x/y coords as tuple?
 
 import tkinter as tk
-from tkinter import ttk, font
+from tkinter import ttk
 from tkinter import messagebox as mb
 import lib.my_tk as my_tk
 import math
@@ -28,11 +28,12 @@ import os
 import itertools
 
 from lib.constants import *
-from lib.data import *
+from lib.data import SettingsDataClass, ResultsDataClass
 from lib.logging import logger
 from lib.math_circle_birdcage import CalculateCircleBirdcage
 from lib.math_ellipse_birdcage import CalculateEllipseBirdcage
 from lib.config import MyConfig
+import lib.fonts as ft
 
 
 ICON_FOLDER = os.path.join(os.getcwd(), "icon", "")
@@ -73,6 +74,8 @@ class MainApplication:
         if os.name == 'posix':
             bg = ttk.Style().lookup('TFrame', 'background')
             self.guiTabSettings.tab.tk_setPalette(background=bg)  # only useful in linux. Hides color inconsistencies between widget bg and frame bg
+
+        logger.info("Program start successfully")
 
     def _setWindow(self, window):
         window.title(f"{PROGRAM_NAME}")  # {VERSION}")
@@ -163,11 +166,11 @@ class MyMoreInfoTab:
 
         self.tab = ttk.Frame(parent.tab_control)
 
-        lf_ind_calc = tk.LabelFrame(self.tab, text="Inductance Calculations", font=myfont_bold)
-        lbl_self = tk.Label(lf_ind_calc, text="Self (nH)", font=myfont_bold, foreground="blue")
-        lbl_eff = tk.Label(lf_ind_calc, text="Effective (nH)", font=myfont_bold, foreground="blue")
-        lb_legs = tk.Label(lf_ind_calc, text="Legs", font=myfont_bold)
-        lb_er = tk.Label(lf_ind_calc, text="ER Seg.", font=myfont_bold)
+        lf_ind_calc = tk.LabelFrame(self.tab, text="Inductance Calculations", font=ft.myfont_bold)
+        lbl_self = tk.Label(lf_ind_calc, text="Self (nH)", font=ft.myfont_bold, foreground="blue")
+        lbl_eff = tk.Label(lf_ind_calc, text="Effective (nH)", font=ft.myfont_bold, foreground="blue")
+        lb_legs = tk.Label(lf_ind_calc, text="Legs", font=ft.myfont_bold)
+        lb_er = tk.Label(lf_ind_calc, text="ER Seg.", font=ft.myfont_bold)
 
         txt_self_legs = my_tk.MyEntry(lf_ind_calc, text=self.results.leg_self, read_only=True, decimals=MAX_PRECISION)
         txt_self_er = my_tk.MyEntry(lf_ind_calc, text=self.results.er_self, read_only=True, decimals=MAX_PRECISION)
@@ -202,9 +205,9 @@ class MyResultsTab:
         self.tab = ttk.Frame(parent.tab_control)
         self.cap_grid = ttk.Frame(self.tab) #sub-grid for the capacitor results
 
-        lbl_cap_header = tk.Label(self.cap_grid, text="Calculated Capacitance (pF)", font=myfont_bold, foreground="blue")
+        lbl_cap_header = tk.Label(self.cap_grid, text="Calculated Capacitance (pF)", font=ft.myfont_bold, foreground="blue")
 
-        self.lbl_cap = [tk.Label(self.cap_grid, text=f"C{i+1}", font=myfont_bold, foreground=self.colors[i]) for i in range(int(MAX_LEGS/4))]
+        self.lbl_cap = [tk.Label(self.cap_grid, text=f"C{i+1}", font=ft.myfont_bold, foreground=self.colors[i]) for i in range(int(MAX_LEGS/4))]
         self.txt_cap_res = [my_tk.MyEntry(self.cap_grid, text=self.results.cap[i], read_only=True, decimals=MAX_PRECISION) for i in range(int(MAX_LEGS/4))]
 
         tk.Grid.columnconfigure(self.tab, 1, weight=0)  # weight of the column width
@@ -225,23 +228,23 @@ class MyResultsTab:
         self.canvas_size = 200
 
         frm_curr_plot = tk.LabelFrame(self.tab)
-        lbl_curr_plot = tk.Label(frm_curr_plot, text="Current distribution in the legs", font=myfont_small_bold, foreground="blue")
+        lbl_curr_plot = tk.Label(frm_curr_plot, text="Current distribution in the legs", font=ft.myfont_small_bold, foreground="blue")
         lbl_curr_plot.pack(anchor='nw')
-        lbl_curr_plot2 = tk.Label(frm_curr_plot, text="Normalized current intensity", font=myfont_small, foreground="black")
+        lbl_curr_plot2 = tk.Label(frm_curr_plot, text="Normalized current intensity", font=ft.myfont_small, foreground="black")
         lbl_curr_plot2.pack(anchor='nw')
 
         self.canvas_curr = tk.Canvas(frm_curr_plot, width=self.canvas_size, height=self.canvas_size, borderwidth=0, highlightbackground="grey")
         self._drawCurrentGraphAxis()
         self.canvas_curr.pack(pady=(10, 10))
 
-        lbl_curr_plot2 = tk.Label(frm_curr_plot, text="Angular position of leg (degree)\nZero beginning at +X direction", font=myfont_small, foreground="black")
+        lbl_curr_plot2 = tk.Label(frm_curr_plot, text="Angular position of leg (degree)\nZero beginning at +X direction", font=ft.myfont_small, foreground="black")
         lbl_curr_plot2.pack(anchor='nw')
 
         # capacitor graph
         frm_cap_pos = tk.LabelFrame(self.tab)
-        lbl_cap_pos = tk.Label(frm_cap_pos, text="Position of legs and capacitors", font=myfont_small_bold, foreground="blue")
+        lbl_cap_pos = tk.Label(frm_cap_pos, text="Position of legs and capacitors", font=ft.myfont_small_bold, foreground="blue")
         lbl_cap_pos.pack(anchor='nw')
-        lbl_curr_plot2 = tk.Label(frm_cap_pos, text="C: Capacitor", font=myfont_small, foreground="black")
+        lbl_curr_plot2 = tk.Label(frm_cap_pos, text="C: Capacitor", font=ft.myfont_small, foreground="black")
         lbl_curr_plot2.pack(anchor='nw')
 
         self.canvas_coil = tk.Canvas(frm_cap_pos, width=self.canvas_size, height=self.canvas_size, borderwidth=1, highlightbackground="grey")
@@ -289,9 +292,6 @@ class MyResultsTab:
         r_lp = r_hp + 4  # radius
         offset = thetas[0]  # rotate the c's to be in between the dots
 
-        # for cap in self.results.cap:
-        #     print(cap.get())
-
         if ellipse:
             it = itertools.cycle(itertools.chain(range(0, int(legs / 4)), range(int(legs / 4) - 1, -1, -1)))
             ratio = b / a
@@ -315,12 +315,12 @@ class MyResultsTab:
 
             if ellipse:
                 if legs-legs//4-1 < i < legs :
-                    self.canvas_coil.create_text(x, y, text=f"C{legs-i}", font='bold', fill=self.colors[next(it)], tags='deletable') #TODO better location of text
+                    self.canvas_coil.create_text(x, y, text=f"C{legs-i}", font=ft.myfont_small_bold, fill=self.colors[next(it)], tags='deletable') #TODO better location of text
                 else:
                     next(it)
 
             else:
-                self.canvas_coil.create_text(x, y, text="C", font=myfont_small, fill='black', tags='deletable')  # todo change to smaller font size
+                self.canvas_coil.create_text(x, y, text="C", font=ft.myfont_small, fill='black', tags='deletable')  # todo change to smaller font size
 
     def _drawCurrentGraphAxis(self):
         from_edge_l = 10
@@ -417,21 +417,21 @@ class MySettingsTab:
     def _setGui(self):
         # todo make sub functions for each gui part
 
-        lbl_title = tk.Label(self.tab, text="Circular Birdcage Coil ", font=myfont_bold, foreground="blue")
+        lbl_title = tk.Label(self.tab, text="Circular Birdcage Coil ", font=ft.myfont_bold, foreground="blue")
 
-        lf_type_of_legs = tk.LabelFrame(self.tab, text="Type of Leg", font=myfont_bold)
+        lf_type_of_legs = tk.LabelFrame(self.tab, text="Type of Leg", font=ft.myfont_bold)
         rb_leg_r = tk.Radiobutton(lf_type_of_legs, text='Rectangular', value=RECT, variable=self.settings.setting_leg_type)
         rb_leg_t = tk.Radiobutton(lf_type_of_legs, text='Tubular', value=TUBE, variable=self.settings.setting_leg_type)
         rb_leg_r.pack(anchor="w")
         rb_leg_t.pack(anchor="w")
 
-        lf_type_of_er = tk.LabelFrame(self.tab, text="Type of ER", font=myfont_bold)
+        lf_type_of_er = tk.LabelFrame(self.tab, text="Type of ER", font=ft.myfont_bold)
         rb_er_r = tk.Radiobutton(lf_type_of_er, text='Rectangular', value=RECT, variable=self.settings.setting_er_type)
         rb_er_t = tk.Radiobutton(lf_type_of_er, text='Tubular', value=TUBE, variable=self.settings.setting_er_type)
         rb_er_r.pack(anchor="w")
         rb_er_t.pack(anchor="w")
 
-        self.lf_config = tk.LabelFrame(self.tab, text="Configuration", font=myfont_bold)
+        self.lf_config = tk.LabelFrame(self.tab, text="Configuration", font=ft.myfont_bold)
         rb_config_hp = tk.Radiobutton(self.lf_config, text='High-Pass', value=HIGHPASS, variable=self.settings.setting_coil_configuration)
         rb_config_lp = tk.Radiobutton(self.lf_config, text='Low-Pass', value=LOWPASS, variable=self.settings.setting_coil_configuration)
         rb_config_bp = tk.Radiobutton(self.lf_config, text='Band-Pass', value=BANDPASS, variable=self.settings.setting_coil_configuration)
@@ -442,8 +442,8 @@ class MySettingsTab:
         self.frm_bp = tk.LabelFrame(self.lf_config)
         lb_bp_cap = tk.Label(self.frm_bp, text="Predetermined\ncapacitor (pF)", justify='left', fg='blue')
         txt_bp_cap = my_tk.NumInput(self.frm_bp, text=self.settings.bp_cap, width=5, bg="white", min_value=0.001)
-        rb_bp_leg = tk.Radiobutton(self.frm_bp, text='On Leg', font=myfont_bold, value=LEG, variable=self.settings.setting_bp_cap_location)
-        rb_bp_er = tk.Radiobutton(self.frm_bp, text='On ER', font=myfont_bold, value=ER, variable=self.settings.setting_bp_cap_location)
+        rb_bp_leg = tk.Radiobutton(self.frm_bp, text='On Leg', font=ft.myfont_bold, value=LEG, variable=self.settings.setting_bp_cap_location)
+        rb_bp_er = tk.Radiobutton(self.frm_bp, text='On ER', font=ft.myfont_bold, value=ER, variable=self.settings.setting_bp_cap_location)
 
         lb_bp_cap.grid(row=0, sticky=tk.W, columnspan=2)
         txt_bp_cap.grid(row=1, column=1, rowspan=2, sticky=tk.W)
@@ -451,12 +451,12 @@ class MySettingsTab:
         rb_bp_er.grid(row=2, sticky=tk.NW)
         self.frm_bp.pack(anchor="w")
 
-        lf_nr_of_legs = tk.LabelFrame(self.tab, text="Number of Legs", font=myfont_bold)
+        lf_nr_of_legs = tk.LabelFrame(self.tab, text="Number of Legs", font=ft.myfont_bold)
         scale_nr_of_legs = my_tk.MyScale(lf_nr_of_legs, from_=MIN_LEGS, to=MAX_LEGS, resolution=4, tickinterval=4, orient=tk.HORIZONTAL, length=250,
                                          variable=self.settings.nr_of_legs, command=lambda e: self.settings.nr_of_legs.set(int(scale_nr_of_legs.get())))
         scale_nr_of_legs.pack()
 
-        lf_dimensions = tk.LabelFrame(self.tab, text="Dimensions (cm)", font=myfont_bold)
+        lf_dimensions = tk.LabelFrame(self.tab, text="Dimensions (cm)", font=ft.myfont_bold)
 
         self.lb_coil_diameter = tk.Label(lf_dimensions, text="Coil Diameter ")
         self.lb_shield_diameter = tk.Label(lf_dimensions, text="RF shield Diameter ")
@@ -528,7 +528,7 @@ class MySettingsTab:
         self.txt_seg_length.grid(column=3, row=4, sticky=tk.W, pady=(0, 10), padx=(0, 10))
 
         frm_f0 = tk.Frame(self.tab)
-        lb_res_freq = tk.Label(frm_f0, font=myfont_bold, text="Resonant\nFreq. (MHz)", justify='left')
+        lb_res_freq = tk.Label(frm_f0, font=ft.myfont_bold, text="Resonant\nFreq. (MHz)", justify='left')
         txt_res_freq = my_tk.NumInput(frm_f0, text=self.settings.freq, width=7, bg="white", min_value=0)
         lb_res_freq.grid(row=0, sticky=tk.W)
         txt_res_freq.grid(row=2, sticky=tk.W)
@@ -676,9 +676,9 @@ class MyAboutWindow:
         lb_prog = tk.Label(self.top, text=f"{PROGRAM_NAME} {VERSION}", anchor='w')
 
         import webbrowser
-        myfont_underlined = default_font.copy()
-        myfont_underlined.configure(underline=True)
-        lb_site = tk.Label(self.top, text=f"{WEBSITE}", fg="blue", cursor="hand2", anchor='w', font=myfont_underlined)
+        ft.myfont_underlined = ft.default_font.copy()
+        ft.myfont_underlined.configure(underline=True)
+        lb_site = tk.Label(self.top, text=f"{WEBSITE}", fg="blue", cursor="hand2", anchor='w', font=ft.myfont_underlined)
         lb_site.bind("<Button-1>", lambda e: webbrowser.open("http://" + WEBSITE, new=0, autoraise=True))
 
         txt = f"{PROGRAM_NAME} is a program to easily determine the ideal capacitor to be used in a birdcage coil design.\n\n" \
@@ -736,26 +736,14 @@ class MyAboutWindow:
         top.deiconify()
 
 
+def main():
+    root.withdraw()
+    MainApplication(root)
+    root.deiconify()
+    root.mainloop()
+
+
 if __name__ == "__main__":
     root = tk.Tk()
-    root.withdraw()
-
-    default_font = font.nametofont("TkDefaultFont")  # set default font
-    default_font.configure(family='freemono', size=11)
-    myfont_bold = default_font.copy()  # bold font
-    myfont_bold.configure(weight="bold")
-
-    myfont_small_bold = default_font.copy()  # small font
-    myfont_small_bold.configure(weight="bold", size=9)
-
-    myfont_graph = myfont_small_bold.copy()  # small font
-    myfont_graph.configure(weight="bold", size=2)
-
-    myfont_small = default_font.copy()  # small font
-    myfont_small.configure(size=8)
-
-    mygui = MainApplication(root)
-    root.deiconify()
-
-    logger.info("Program start successfully")
-    root.mainloop()
+    ft = ft.MyFonts()
+    main()
