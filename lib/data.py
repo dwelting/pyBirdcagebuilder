@@ -82,7 +82,7 @@ class ResultsDataClass:
         self.er_eff = [tk.DoubleVar(value=0.0) for _ in range(MAX_LEGS)]  # calculated effective inductance of end ring
         self.leg_self = tk.DoubleVar(value=0.0)  # calculated self inductance of legs
         self.er_self = tk.DoubleVar(value=0.0)  # calculated self inductance of end ring
-        self.er_segment_length = tk.IntVar(value=0)
+        self.er_segment_length = tk.DoubleVar(value=0)
 
     def reset(self):
         self.radius[:MAX_LEGS] = [0] * MAX_LEGS
