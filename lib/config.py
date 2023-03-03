@@ -1,5 +1,5 @@
 """
-Description:    Library with a custom configuraton class.
+Description:    Library with a custom configuration class.
 Author: 	    Dimitri Welting
 Website:    	http://github.com/dwelting/
 License: 	    Copyright (c) 2020 Dimitri Welting. All rights reserved.

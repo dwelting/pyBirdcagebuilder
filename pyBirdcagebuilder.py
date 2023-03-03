@@ -1,72 +1,66 @@
 #!/usr/bin/env python3
 
 """
-Description:	pyBirdcagebuilder is a program that calculates ideal capacitor values for birdcage coil designs.
+Description:    pyBirdcagebuilder is a program that calculates ideal capacitor values for birdcage coil designs.
                 This program is based on the original Birdcage Builder program provided by PennState Health.
                 (https://research.med.psu.edu/departments/center-for-nmr-research/software/birdcage-builder-web-app/)
-Author: 		Dimitri Welting
-Website: 		http://github.com/dwelting/pyBirdcagebuilder
-License: 		Copyright (c) 2020 Dimitri Welting. All rights reserved.
+Author:         Dimitri Welting
+Website:        http://github.com/dwelting/pyBirdcagebuilder
+License:        Copyright (c) 2023 Dimitri Welting. All rights reserved.
                 Distributed under the MIT license. The full text of the license can be found in the LICENSE file or on the above-mentioned website.
                 This code is free to download and use. Any paid service providing this code is not endorsed by the author.
 """
 
+#todo
+# settings/results as dataclass
+# circle/ellipse settings tab as separate class, load the other when selected
+# results tab also 2 separate?
+# separate the gui and program control into 2 files
+# change logging "calculation start with..." to only show used values
+# store x/y coords as tuple?
+
 import tkinter as tk
 from tkinter import ttk, font
 from tkinter import messagebox as mb
+import lib.my_tk as my_tk
 import math
 import os
-import lib.my_tk as my_tk
-from lib.logging import logger
-from lib.birdcage_math import CalculateBirdcage
-from lib.config import MyConfig
-# from itertools import cycle, chain
 import itertools
 
-PROGRAM_NAME = "pyBirdcagebuilder"
-VERSION = "v0.1"
-WEBSITE = "github.com/dwelting/pyBirdcagebuilder"
+from lib.constants import *
+from lib.data import *
+from lib.logging import logger
+from lib.math_circle_birdcage import CalculateCircleBirdcage
+from lib.math_ellipse_birdcage import CalculateEllipseBirdcage
+from lib.config import MyConfig
+
 
 ICON_FOLDER = os.path.join(os.getcwd(), "icon", "")
-MAX_PRECISION = 2
 
 
 class MainApplication:
     WINDOWSIZEx = 500
     WINDOWSIZEy = 600
 
-    MIN_LEGS = 8
-    MAX_LEGS = 32
-
-    HIGHPASS = 1
-    LOWPASS = 2
-    BANDPASS = 3
-    RECT = 1
-    TUBE = 2
-    LEG = 1
-    ER = 2
-
-    ELLIPSE = 1
-    CIRCLE = 0
-    SHORT = 1
-    LONG = 0
-
     def __init__(self, window):
         self._setWindow(window)
         self.window = window
 
         self.Config = MyConfig(self)
+        self.settings = SettingsDataClass()
+        self.results = ResultsDataClass()
 
         # menubar
-        self.menuBar = MyMenuBar(self)
+        self.menuBar = MyMenuBar(self, self.settings, self.results)
         window.config(menu=self.menuBar.menu)
 
         self.tab_control = ttk.Notebook(window)  # tabs
 
-        self.calcCapacitance = CalculateBirdcage(self)
-        self.guiTabSettings = MySettingsTab(self)
-        self.guiTabResults = MyResultsTab(self)
-        self.guiTabMoreInfo = MyMoreInfoTab(self)
+        self.calcEllipse = CalculateEllipseBirdcage(self, self.settings, self.results)
+        self.calcCircle = CalculateCircleBirdcage(self, self.settings, self.results)
+        self.guiTabSettings = MySettingsTab(self, self.settings, self.results)
+        self.guiTabResults = MyResultsTab(self, self.settings, self.results)
+        self.guiTabMoreInfo = MyMoreInfoTab(self, self.settings, self.results)
 
         self.tab_control.add(self.guiTabSettings.tab, text=' Settings ')
         self.tab_control.add(self.guiTabResults.tab, text=' Results ')
@@ -102,35 +96,47 @@ class MainApplication:
         if not inputs_:
             return
         logger.info("\nCalculation started with values:\n\t" + "\n\t".join("{}: {}".format(k, v) for k, v in inputs_.items()))
-        self.calcCapacitance.calculate()
+
+        if self.settings.setting_calc == CIRCLE:
+            self.calcCircle.calculate()
+        else:
+            self.calcEllipse.calculate()
+
         self.guiTabResults.drawGraphs()
         self.tab_control.select(1)  # At end switch tab to results
 
 
 class MyMenuBar:
-    def __init__(self, parent):
+    def __init__(self, parent, settings, results):
         self.parent = parent
-
-        self.coil_shape = tk.BooleanVar()  # selects which coil type
-        self.coil_shape.set(True)
+        self.settings = settings
+        self.results = results
 
         self.menu = tk.Menu(parent.window)
 
     def initialize(self):
         self._fileMenu()
-        self._optionMenu()  # todo add when elliptical is fixed
+        self._optionMenu()
         self._helpMenu()
 
     def _optionMenu(self):
+        self.coil_shape = tk.BooleanVar()  # selects which coil type
+        self.coil_shape.set(DEFAULT_SETTING)
+
         optionmenu = tk.Menu(self.menu, tearoff=0)
         self.menu.add_cascade(label="Options", menu=optionmenu)
 
-        # optionmenu.add_checkbutton(label="Circular", onvalue=self.parent.CIRCLE, offvalue=self.parent.ELLIPSE, command=lambda: print("Not yet implemented"), variable=self.coil_shape)
-        # optionmenu.add_checkbutton(label="Elliptical", onvalue=self.parent.ELLIPSE, offvalue=self.parent.CIRCLE, command=lambda: print("Not yet implemented"), variable=self.coil_shape)
-        optionmenu.add_checkbutton(label="Circular", onvalue=self.parent.CIRCLE, offvalue=self.parent.ELLIPSE,
-                                   command=lambda: [self.parent.guiTabSettings.guiAdjust(), self.parent.guiTabResults.initializeGraphs()], variable=self.coil_shape)
-        optionmenu.add_checkbutton(label="Elliptical (experimental)", onvalue=self.parent.ELLIPSE, offvalue=self.parent.CIRCLE,
-                                   command=lambda: [self.parent.guiTabSettings.guiAdjust(), self.parent.guiTabResults.initializeGraphs()], variable=self.coil_shape)
+        optionmenu.add_checkbutton(label="Circular", onvalue=CIRCLE, offvalue=ELLIPSE,
+                                   command=lambda: self._coilModeChanged(), variable=self.coil_shape)
+
+        optionmenu.add_checkbutton(label="Elliptical (experimental)", onvalue=ELLIPSE, offvalue=CIRCLE,
+                                   command=lambda: self._coilModeChanged(), variable=self.coil_shape)
+
+    def _coilModeChanged(self):
+        self.settings.setting_calc = self.coil_shape.get()
+        self.parent.guiTabSettings.guiAdjust()
+        self.parent.guiTabResults.initializeGraphs()
+        self.parent.tab_control.select(0)
 
     def _helpMenu(self):
         helpmenu = tk.Menu(self.menu, tearoff=0)
@@ -142,22 +148,20 @@ class MyMenuBar:
         filemenu = tk.Menu(self.menu, tearoff=0)
         self.menu.add_cascade(label="File", menu=filemenu)
 
-        # filemenu.add_command(label="Save config", command=self.parent.Config.save)
+        # filemenu.add_command(label="Save config", command=self.parent.Config.save)  #TODO add config save all input settings
         # filemenu.add_command(label="Save config as...", command=self.parent.Config.saveAs)
-        # filemenu.add_command(label="Load config", command=self.parent.Config.load)
+        # filemenu.add_command(label="Load config", command=self.parent.Config.load) #TODO add config load all input settings
         # filemenu.add_separator()
         filemenu.add_command(label="Exit", command=self.parent.window.quit)
 
 
 class MyMoreInfoTab:
-    def __init__(self, parent):
+    def __init__(self, parent, settings, results):
         self.parent = parent
-        self.tab = ttk.Frame(parent.tab_control)
+        self.settings = settings
+        self.results = results
 
-        self.v_ind_self_legs = tk.DoubleVar()  # calculated self inductance of legs
-        self.v_ind_self_er = tk.DoubleVar()  # calculated self inductance of end ring
-        self.v_ind_eff_legs = tk.DoubleVar()  # calculated effective inductance of legs
-        self.v_ind_eff_er = tk.DoubleVar()  # calculated effective inductance of end ring
+        self.tab = ttk.Frame(parent.tab_control)
 
         lf_ind_calc = tk.LabelFrame(self.tab, text="Inductance Calculations", font=myfont_bold)
         lbl_self = tk.Label(lf_ind_calc, text="Self (nH)", font=myfont_bold, foreground="blue")
@@ -165,10 +169,10 @@ class MyMoreInfoTab:
         lb_legs = tk.Label(lf_ind_calc, text="Legs", font=myfont_bold)
         lb_er = tk.Label(lf_ind_calc, text="ER Seg.", font=myfont_bold)
 
-        txt_self_legs = my_tk.MyEntry(lf_ind_calc, text=self.v_ind_self_legs, read_only=True, decimals=MAX_PRECISION)
-        txt_self_er = my_tk.MyEntry(lf_ind_calc, text=self.v_ind_self_er, read_only=True, decimals=MAX_PRECISION)
-        txt_eff_legs = my_tk.MyEntry(lf_ind_calc, text=self.v_ind_eff_legs, read_only=True, decimals=MAX_PRECISION)
-        txt_eff_er = my_tk.MyEntry(lf_ind_calc, text=self.v_ind_eff_er, read_only=True, decimals=MAX_PRECISION)
+        txt_self_legs = my_tk.MyEntry(lf_ind_calc, text=self.results.leg_self, read_only=True, decimals=MAX_PRECISION)
+        txt_self_er = my_tk.MyEntry(lf_ind_calc, text=self.results.er_self, read_only=True, decimals=MAX_PRECISION)
+        txt_eff_legs = my_tk.MyEntry(lf_ind_calc, text=self.results.leg_eff[0], read_only=True, decimals=MAX_PRECISION)
+        txt_eff_er = my_tk.MyEntry(lf_ind_calc, text=self.results.er_eff[0], read_only=True, decimals=MAX_PRECISION)
 
         lbl_self.grid(column=1, row=0, sticky=tk.NSEW, padx=(0, 20), pady=(0, 5))
         lbl_eff.grid(column=2, row=0, sticky=tk.NSEW, padx=(0, 5), pady=(0, 5))
@@ -186,21 +190,22 @@ class MyMoreInfoTab:
 
 class MyResultsTab:
     colors = ["red", "dark orange", "gold", "green", "blue", "purple", "grey", "black"]
-    # colors = ["green", "gold", "dark orange", "red", "black", "blue", "purple", "grey"]
-    def __init__(self, parent):
+
+    def __init__(self, parent, settings, results):
+        self.parent = parent
+        self.settings = settings
+        self.results = results
+
         self.canvas_size = None
         self.canvas_curr = None
         self.canvas_coil = None
-        self.parent = parent
         self.tab = ttk.Frame(parent.tab_control)
         self.cap_grid = ttk.Frame(self.tab) #sub-grid for the capacitor results
 
-        self.v_cap_res = [tk.DoubleVar() for _ in range(int(self.parent.MAX_LEGS/4))]
-
         lbl_cap_header = tk.Label(self.cap_grid, text="Calculated Capacitance (pF)", font=myfont_bold, foreground="blue")
 
-        self.txt_cap_res = [my_tk.MyEntry(self.cap_grid, text=self.v_cap_res[i], read_only=True, decimals=MAX_PRECISION) for i in range(int(self.parent.MAX_LEGS/4))]
-        self.lbl_cap = [tk.Label(self.cap_grid, text=f"C{i+1}", font=myfont_bold, foreground=self.colors[i]) for i in range(int(self.parent.MAX_LEGS/4))]
+        self.lbl_cap = [tk.Label(self.cap_grid, text=f"C{i+1}", font=myfont_bold, foreground=self.colors[i]) for i in range(int(MAX_LEGS/4))]
+        self.txt_cap_res = [my_tk.MyEntry(self.cap_grid, text=self.results.cap[i], read_only=True, decimals=MAX_PRECISION) for i in range(int(MAX_LEGS/4))]
 
         tk.Grid.columnconfigure(self.tab, 1, weight=0)  # weight of the column width
         tk.Grid.columnconfigure(self.tab, 0, weight=1)
@@ -209,7 +214,7 @@ class MyResultsTab:
 
         self.cap_grid.grid(column=1, row=0, columnspan=2, sticky=tk.NW, pady=(10, 10), padx=(5, 0))
         lbl_cap_header.grid(column=0, row=0, columnspan=3, sticky=tk.NW, pady=(0, 5), padx=(0, 0))
-        for i in range(int(self.parent.MAX_LEGS/4)):
+        for i in range(int(MAX_LEGS/4)):
             self.lbl_cap[i].grid(column=0, row=i+1, sticky=tk.NW, pady=(0, 0), padx=(0, 5))
             self.txt_cap_res[i].grid(column=1, row=i+1, sticky=tk.NW, pady=(0, 0), padx=(5, 0))
 
@@ -255,10 +260,10 @@ class MyResultsTab:
 
     def drawCoilGraphShape(self):
         self.canvas_coil.delete("coilshape")
-        if self.parent.menuBar.coil_shape.get() == self.parent.CIRCLE:
+        if self.settings.setting_calc == CIRCLE:
             self.canvas_coil.create_oval(20, 20, self.canvas_size - 20, self.canvas_size - 20, outline="green", width=1, tags='coilshape')
         else:
-            ratio = self.parent.guiTabSettings.v_coil_short_diameter.get() / self.parent.guiTabSettings.v_coil_long_diameter.get()
+            ratio = self.settings.coil_diameter_short.get() / self.settings.coil_diameter_long.get()
             x_min = 20
             x_max = self.canvas_size - 20
             y_min = self.canvas_size / 2 - ((self.canvas_size / 2 - 20) * ratio)
@@ -267,56 +272,55 @@ class MyResultsTab:
 
     def _drawCoilGraphLegsCaps(self):
         self.guiAdjust()
-        ellipse = self.parent.menuBar.coil_shape.get() == self.parent.ELLIPSE
+        ellipse = self.settings.setting_calc == ELLIPSE
         self.canvas_coil.delete("deletable")
 
-        thetas = self.parent.calcCapacitance.thetas
-        bc_mode = self.parent.guiTabSettings.v_rb_config_selected.get()
+        thetas = self.results.thetas
+        xcoords = self.results.x_coords
+        ycoords = self.results.y_coords
+        bc_mode = self.settings.setting_coil_configuration.get()
 
-        r = ((self.canvas_size - 40) / 2)
-        a = self.parent.guiTabSettings.v_coil_long_diameter.get()
-        b = self.parent.guiTabSettings.v_coil_short_diameter.get()
-        legs = self.parent.guiTabSettings.v_nr_of_legs.get()
+        r = (self.canvas_size - 40) / 2
+        a = self.settings.coil_diameter_long.get()
+        b = self.settings.coil_diameter_short.get()
+        legs = self.settings.nr_of_legs.get()
 
         r_hp = r + 6  # radius
         r_lp = r_hp + 4  # radius
-        offset = thetas[0]/2  # rotate the c's to be in between the dots
+        offset = thetas[0]  # rotate the c's to be in between the dots
 
-        it = itertools.cycle(itertools.chain(range(0, int(legs/4)), range(int(legs/4)-1, -1, -1)))
-        # for theta in thetas:
-        #     print(next(it))r
-        for cap in self.v_cap_res:
-            print(cap.get())
-
+        # for cap in self.results.cap:
+        #     print(cap.get())
 
         if ellipse:
+            it = itertools.cycle(itertools.chain(range(0, int(legs / 4)), range(int(legs / 4) - 1, -1, -1)))
             ratio = b / a
+            scale = r / (a/2)
         else:
             ratio = 1
+            scale = r / (self.settings.coil_diameter.get()/2)
 
-        for i, theta in enumerate(thetas):
-            x = r * math.cos(theta) + self.canvas_size / 2
-            y = r * math.sin(theta) * ratio + self.canvas_size / 2
+        for i, theta in enumerate(thetas[:legs]):
+            x = scale * xcoords[i] + self.canvas_size / 2
+            y = scale * ycoords[i] + self.canvas_size / 2
             self.canvas_coil.create_oval(x - 4, y - 4, x + 4, y + 4, fill="red", tags='deletable')
 
         # for i, theta in enumerate(thetas):  # angle and radius to x/y coords
-            if ellipse or bc_mode != self.parent.LOWPASS:  # if highpass or bandpass
+            if ellipse or bc_mode != LOWPASS:  # if highpass or bandpass
                 x = r_hp * math.cos(theta - offset) + (self.canvas_size / 2) + 1
-                y = (r_hp * math.sin(theta - offset) * ratio * 1.05) + (self.canvas_size / 2) - 1
-            elif bc_mode != self.parent.HIGHPASS:  # if lowpass or bandpass
+                y = (r_hp * math.sin(theta - offset) * ratio) + (self.canvas_size / 2) - 1
+            elif bc_mode != HIGHPASS:  # if lowpass or bandpass
                 x = r_lp * math.cos(theta) + (self.canvas_size / 2) + 1
-                y = (r_lp * math.sin(theta)) * ratio * 1.05 + (self.canvas_size / 2) - 1
+                y = (r_lp * math.sin(theta)) * ratio + (self.canvas_size / 2) - 1
 
             if ellipse:
-                if i > legs - int(legs/4)-1:
-                    # self.canvas_coil.create_text(x, y, text="C", font='bold', fill=self.colors[i % int(self.parent.guiTabSettings.v_nr_of_legs.get() / 4)], tags='deletable')
-                    self.canvas_coil.create_text(x, y, text="C", font='bold', fill=self.colors[next(it)], tags='deletable')
-                    # self.canvas_coil.create_text(x, y, text="C", font='bold', fill=self.colors[int(self.parent.guiTabSettings.v_nr_of_legs.get() / 4 - i)], tags='deletable')
+                if legs-legs//4-1 < i < legs :
+                    self.canvas_coil.create_text(x, y, text=f"C{legs-i}", font='bold', fill=self.colors[next(it)], tags='deletable') #TODO better location of text
                 else:
                     next(it)
-                # if i == 4: break
+
             else:
-                self.canvas_coil.create_text(x, y, text="C", font='bold', fill='black', tags='deletable')
+                self.canvas_coil.create_text(x, y, text="C", font=myfont_small, fill='black', tags='deletable')  # todo change to smaller font size
 
     def _drawCurrentGraphAxis(self):
         from_edge_l = 10
@@ -335,10 +339,9 @@ class MyResultsTab:
 
     def _drawCurrentPlot(self):
         self.canvas_curr.delete("deletable")
-        #self._drawGraphAxis()
 
-        legcurrs = self.parent.calcCapacitance.legcurrs
-        nr_of_legs = self.parent.calcCapacitance.nr_of_legs
+        legcurrs = self.results.leg_currs
+        legs = self.settings.nr_of_legs.get()
         offset = 10
 
         highest_curr = 0
@@ -349,16 +352,16 @@ class MyResultsTab:
 
         old_x = 0
         old_y = 0
-        for i, curr in enumerate(legcurrs):  # create the lines
-            x = ((self.canvas_size - 20) / (nr_of_legs - 1)) * i + offset
+        for i, curr in enumerate(legcurrs[:legs]):  # create the lines
+            x = ((self.canvas_size - 20) / (legs - 1)) * i + offset
             y = -curr * scale + self.canvas_size / 2
             if i > 0:
                 self.canvas_curr.create_line(x, y, old_x, old_y, width=1, fill='green', tags='deletable')
             old_x = x
             old_y = y
 
-        for i, curr in enumerate(legcurrs):  # create the dots
-            x = ((self.canvas_size - 20) / (nr_of_legs - 1)) * i + offset
+        for i, curr in enumerate(legcurrs[:legs]):  # create the dots
+            x = ((self.canvas_size - 20) / (legs - 1)) * i + offset
             y = -curr * scale + self.canvas_size / 2
             self.canvas_curr.create_oval(x - 4, y - 4, x + 4, y + 4, fill='red', tags="deletable")
 
@@ -368,19 +371,19 @@ class MyResultsTab:
         self._drawCurrentPlot()
 
     def guiAdjust(self):
-        for i in range(int(self.parent.MAX_LEGS / 4)):
+        for i in range(int(MAX_LEGS / 4)):
             self.lbl_cap[i].grid_remove()
             self.txt_cap_res[i].grid_remove()
 
-        if self.parent.menuBar.coil_shape.get() == self.parent.ELLIPSE:
-            for i in range(int(self.parent.guiTabSettings.v_nr_of_legs.get() / 4)):
+        if self.settings.setting_calc == ELLIPSE:
+            for i in range(int(self.settings.nr_of_legs.get() / 4)):
                 self.lbl_cap[i].grid()
                 self.txt_cap_res[i].grid()
         else:
             self.txt_cap_res[0].grid()
 
     def guiClear(self):
-        for i in range(int(self.parent.MAX_LEGS / 4)):
+        for i in range(int(MAX_LEGS / 4)):
             self.txt_cap_res[i].clear()
         self.guiAdjust()
 
@@ -389,64 +392,27 @@ class MyResultsTab:
 
 
 class MySettingsTab:
-    def __init__(self, parent):
+    def __init__(self, parent, settings, results):
         self.parent = parent
+        self.settings = settings
+        self.results = results
         self.tab = ttk.Frame(parent.tab_control)
-
-        self.vars = ttk.Frame(self.tab)
-        self.v_res_freq = tk.DoubleVar()  # variable for Resonance frequency
-        self.v_rb_legs_selected = tk.IntVar()  # variable for state of radiobuttons
-        self.v_rb_er_selected = tk.IntVar()  # variable for state of radiobuttons
-        self.v_rb_config_selected = tk.IntVar()  # variable for state of radiobuttons
-        self.v_nr_of_legs = tk.IntVar()
-        self.v_coil_diameter = tk.DoubleVar()
-        self.v_shield_diameter = tk.DoubleVar()
-        self.v_bp_cap = tk.DoubleVar()
-        self.v_rb_bp = tk.IntVar()
-        self.v_leg_length = tk.DoubleVar()
-        self.v_er_width = tk.DoubleVar()
-        self.v_leg_width = tk.DoubleVar()
-        self.v_er_od = tk.DoubleVar()
-        self.v_er_id = tk.DoubleVar()
-        self.v_leg_od = tk.DoubleVar()
-        self.v_leg_id = tk.DoubleVar()
-
-        self.v_coil_shortaxis = tk.IntVar()
-        self.v_coil_long_diameter = tk.DoubleVar()
-        self.v_coil_short_diameter = tk.DoubleVar()
-        self.v_shield_short_diameter = tk.DoubleVar()
-        self.v_shield_long_diameter = tk.DoubleVar()
-
-        self.v_rb_legs_selected.set(self.parent.RECT)
-        self.v_rb_er_selected.set(self.parent.RECT)
-        self.v_rb_config_selected.set(self.parent.HIGHPASS)
-        self.v_rb_bp.set(self.parent.LEG)
-
-        self.v_er_seg_length = tk.DoubleVar()  # Calculated segment length
 
         self._setGui()
 
-        self.v_rb_config_selected.trace("w", lambda *args: self.guiAdjust())
-        self.v_rb_legs_selected.trace("w", lambda *args: self.guiAdjust())
-        self.v_rb_er_selected.trace("w", lambda *args: self.guiAdjust())
+        self.settings.setting_coil_configuration.trace("w", lambda *args: self.guiAdjust())
+        self.settings.setting_leg_type.trace("w", lambda *args: self.guiAdjust())
+        self.settings.setting_er_type.trace("w", lambda *args: self.guiAdjust())
 
         self.guiAdjust()
 
-        self.setDefaults()
+        # self.setDefaults()
+        self.settings.reset()
 
     def linkToResultstab(self):
-        #TODO guiclear on variable change
-        # for child in self.tab.winfo_children():
-        #     for child2 in child.winfo_children():
-        #         #print(child2.get())
-        #         #try:
-        #         child2.configure(command= lambda: self.parent.guiTabResults.guiClear())
-        #         #except:
-        #         #    pass
-
-        self.v_nr_of_legs.trace("w", lambda *args: self.parent.guiTabResults.guiClear())
-        self.v_coil_short_diameter.trace("w", lambda *args: [self.parent.guiTabResults.guiClear(), self.parent.guiTabResults.drawCoilGraphShape()])
-        self.v_coil_long_diameter.trace("w", lambda *args: [self.parent.guiTabResults.guiClear(), self.parent.guiTabResults.drawCoilGraphShape()])
+        self.settings.nr_of_legs.trace("w", lambda *args: self.parent.guiTabResults.guiClear())
+        self.settings.coil_diameter_short.trace("w", lambda *args: [self.parent.guiTabResults.guiClear(), self.parent.guiTabResults.drawCoilGraphShape()])
+        self.settings.coil_diameter_long.trace("w", lambda *args: [self.parent.guiTabResults.guiClear(), self.parent.guiTabResults.drawCoilGraphShape()])
 
     def _setGui(self):
         # todo make sub functions for each gui part
@@ -454,30 +420,30 @@ class MySettingsTab:
         lbl_title = tk.Label(self.tab, text="Circular Birdcage Coil ", font=myfont_bold, foreground="blue")
 
         lf_type_of_legs = tk.LabelFrame(self.tab, text="Type of Leg", font=myfont_bold)
-        rb_leg_r = tk.Radiobutton(lf_type_of_legs, text='Rectangular', value=self.parent.RECT, variable=self.v_rb_legs_selected)
-        rb_leg_t = tk.Radiobutton(lf_type_of_legs, text='Tubular', value=self.parent.TUBE, variable=self.v_rb_legs_selected)
+        rb_leg_r = tk.Radiobutton(lf_type_of_legs, text='Rectangular', value=RECT, variable=self.settings.setting_leg_type)
+        rb_leg_t = tk.Radiobutton(lf_type_of_legs, text='Tubular', value=TUBE, variable=self.settings.setting_leg_type)
         rb_leg_r.pack(anchor="w")
         rb_leg_t.pack(anchor="w")
 
         lf_type_of_er = tk.LabelFrame(self.tab, text="Type of ER", font=myfont_bold)
-        rb_er_r = tk.Radiobutton(lf_type_of_er, text='Rectangular', value=self.parent.RECT, variable=self.v_rb_er_selected)
-        rb_er_t = tk.Radiobutton(lf_type_of_er, text='Tubular', value=self.parent.TUBE, variable=self.v_rb_er_selected)
+        rb_er_r = tk.Radiobutton(lf_type_of_er, text='Rectangular', value=RECT, variable=self.settings.setting_er_type)
+        rb_er_t = tk.Radiobutton(lf_type_of_er, text='Tubular', value=TUBE, variable=self.settings.setting_er_type)
         rb_er_r.pack(anchor="w")
         rb_er_t.pack(anchor="w")
 
-        lf_config = tk.LabelFrame(self.tab, text="Configuration", font=myfont_bold)
-        rb_config_hp = tk.Radiobutton(lf_config, text='High-Pass', value=self.parent.HIGHPASS, variable=self.v_rb_config_selected)
-        rb_config_lp = tk.Radiobutton(lf_config, text='Low-Pass', value=self.parent.LOWPASS, variable=self.v_rb_config_selected)
-        rb_config_bp = tk.Radiobutton(lf_config, text='Band-Pass', value=self.parent.BANDPASS, variable=self.v_rb_config_selected)
+        self.lf_config = tk.LabelFrame(self.tab, text="Configuration", font=myfont_bold)
+        rb_config_hp = tk.Radiobutton(self.lf_config, text='High-Pass', value=HIGHPASS, variable=self.settings.setting_coil_configuration)
+        rb_config_lp = tk.Radiobutton(self.lf_config, text='Low-Pass', value=LOWPASS, variable=self.settings.setting_coil_configuration)
+        rb_config_bp = tk.Radiobutton(self.lf_config, text='Band-Pass', value=BANDPASS, variable=self.settings.setting_coil_configuration)
         rb_config_hp.pack(anchor="w")
         rb_config_lp.pack(anchor="w")
         rb_config_bp.pack(anchor="w")
 
-        self.frm_bp = tk.LabelFrame(lf_config)
+        self.frm_bp = tk.LabelFrame(self.lf_config)
         lb_bp_cap = tk.Label(self.frm_bp, text="Predetermined\ncapacitor (pF)", justify='left', fg='blue')
-        txt_bp_cap = my_tk.NumInput(self.frm_bp, text=self.v_bp_cap, width=5, bg="white", min_value=0.001)
-        rb_bp_leg = tk.Radiobutton(self.frm_bp, text='On Leg', font=myfont_bold, value=self.parent.LEG, variable=self.v_rb_bp)
-        rb_bp_er = tk.Radiobutton(self.frm_bp, text='On ER', font=myfont_bold, value=self.parent.ER, variable=self.v_rb_bp)
+        txt_bp_cap = my_tk.NumInput(self.frm_bp, text=self.settings.bp_cap, width=5, bg="white", min_value=0.001)
+        rb_bp_leg = tk.Radiobutton(self.frm_bp, text='On Leg', font=myfont_bold, value=LEG, variable=self.settings.setting_bp_cap_location)
+        rb_bp_er = tk.Radiobutton(self.frm_bp, text='On ER', font=myfont_bold, value=ER, variable=self.settings.setting_bp_cap_location)
 
         lb_bp_cap.grid(row=0, sticky=tk.W, columnspan=2)
         txt_bp_cap.grid(row=1, column=1, rowspan=2, sticky=tk.W)
@@ -486,45 +452,41 @@ class MySettingsTab:
         self.frm_bp.pack(anchor="w")
 
         lf_nr_of_legs = tk.LabelFrame(self.tab, text="Number of Legs", font=myfont_bold)
-        scale_nr_of_legs = my_tk.MyScale(lf_nr_of_legs, from_=self.parent.MIN_LEGS, to=self.parent.MAX_LEGS, resolution=4, tickinterval=4, orient=tk.HORIZONTAL, length=250,
-                                         variable=self.v_nr_of_legs, command=lambda e: self.v_nr_of_legs.set(int(scale_nr_of_legs.get())))
+        scale_nr_of_legs = my_tk.MyScale(lf_nr_of_legs, from_=MIN_LEGS, to=MAX_LEGS, resolution=4, tickinterval=4, orient=tk.HORIZONTAL, length=250,
+                                         variable=self.settings.nr_of_legs, command=lambda e: self.settings.nr_of_legs.set(int(scale_nr_of_legs.get())))
         scale_nr_of_legs.pack()
 
         lf_dimensions = tk.LabelFrame(self.tab, text="Dimensions (cm)", font=myfont_bold)
 
         self.lb_coil_diameter = tk.Label(lf_dimensions, text="Coil Diameter ")
         self.lb_shield_diameter = tk.Label(lf_dimensions, text="RF shield Diameter ")
-        self.txt_coil_diameter = my_tk.NumInput(lf_dimensions, text=self.v_coil_diameter, width=7, bg="white", min_value=0)
-        self.txt_shield_diameter = my_tk.NumInput(lf_dimensions, text=self.v_shield_diameter, width=7, bg="white", min_value=0)
+        self.txt_coil_diameter = my_tk.NumInput(lf_dimensions, text=self.settings.coil_diameter, width=7, bg="white", min_value=0)
+        self.txt_shield_diameter = my_tk.NumInput(lf_dimensions, text=self.settings.shield_diameter, width=7, bg="white", min_value=0)
 
         self.lb_coil_short_diameter = tk.Label(lf_dimensions, text="Coil Diameter Short")
         self.lb_coil_long_diameter = tk.Label(lf_dimensions, text="Coil Diameter Long")
-        self.lb_shield_short_diameter = tk.Label(lf_dimensions, text="RF shield Diameter Short")
-        self.lb_shield_long_diameter = tk.Label(lf_dimensions, text="RF shield Diameter Long")
-        self.txt_coil_short_diameter = my_tk.NumInput(lf_dimensions, text=self.v_coil_short_diameter, width=7, bg="white", min_value=0)
-        self.txt_coil_long_diameter = my_tk.NumInput(lf_dimensions, text=self.v_coil_long_diameter, width=7, bg="white", min_value=0)
-        self.txt_shield_short_diameter = my_tk.NumInput(lf_dimensions, text=self.v_shield_short_diameter, width=7, bg="white", min_value=0)
-        self.txt_shield_long_diameter = my_tk.NumInput(lf_dimensions, text=self.v_shield_long_diameter, width=7, bg="white", min_value=0)
+        self.txt_coil_short_diameter = my_tk.NumInput(lf_dimensions, text=self.settings.coil_diameter_short, width=7, bg="white", min_value=0)
+        self.txt_coil_long_diameter = my_tk.NumInput(lf_dimensions, text=self.settings.coil_diameter_long, width=7, bg="white", min_value=0)
 
         lb_leg_length = tk.Label(lf_dimensions, text="Leg Length")
         self.lb_leg_width = tk.Label(lf_dimensions, text="Leg Width")
         self.lb_er_width = tk.Label(lf_dimensions, text="ER Seg. Width")
-        txt_leg_length = my_tk.NumInput(lf_dimensions, text=self.v_leg_length, width=7, bg="white", min_value=0)
-        self.txt_leg_width = my_tk.NumInput(lf_dimensions, text=self.v_leg_width, width=7, bg="white", min_value=0)
-        self.txt_er_width = my_tk.NumInput(lf_dimensions, text=self.v_er_width, width=7, bg="white", min_value=0)
+        txt_leg_length = my_tk.NumInput(lf_dimensions, text=self.settings.leg_length, width=7, bg="white", min_value=0)
+        self.txt_leg_width = my_tk.NumInput(lf_dimensions, text=self.settings.leg_width, width=7, bg="white", min_value=0)
+        self.txt_er_width = my_tk.NumInput(lf_dimensions, text=self.settings.er_width, width=7, bg="white", min_value=0)
 
         self.lb_leg_od = tk.Label(lf_dimensions, text="Leg O.D.")
         self.lb_leg_id = tk.Label(lf_dimensions, text="Leg I.D.")
         self.lb_er_od = tk.Label(lf_dimensions, text="ER O.D.")
         self.lb_er_id = tk.Label(lf_dimensions, text="ER I.D.")
-        self.txt_leg_od = my_tk.NumInput(lf_dimensions, text=self.v_leg_od, width=7, bg="white", min_value=0)
-        self.txt_leg_id = my_tk.NumInput(lf_dimensions, text=self.v_leg_id, width=7, bg="white", min_value=0)
-        self.txt_er_od = my_tk.NumInput(lf_dimensions, text=self.v_er_od, width=7, bg="white", min_value=0)
-        self.txt_er_id = my_tk.NumInput(lf_dimensions, text=self.v_er_id, width=7, bg="white", min_value=0)
+        self.txt_leg_od = my_tk.NumInput(lf_dimensions, text=self.settings.leg_od, width=7, bg="white", min_value=0)
+        self.txt_leg_id = my_tk.NumInput(lf_dimensions, text=self.settings.leg_id, width=7, bg="white", min_value=0)
+        self.txt_er_od = my_tk.NumInput(lf_dimensions, text=self.settings.er_od, width=7, bg="white", min_value=0)
+        self.txt_er_id = my_tk.NumInput(lf_dimensions, text=self.settings.er_id, width=7, bg="white", min_value=0)
 
         # automatic segment length calculation textbox, label
         self.lb_seg_length = tk.Label(lf_dimensions, text="ER Seg. length", foreground='blue')
-        self.txt_seg_length = my_tk.MyEntry(lf_dimensions, text=self.v_er_seg_length, fg='grey', read_only=True, decimals=MAX_PRECISION)
+        self.txt_seg_length = my_tk.MyEntry(lf_dimensions, text=self.results.er_segment_length, fg='grey', read_only=True, decimals=MAX_PRECISION)
         self.txt_seg_length.setValue("-")
 
         # column 1
@@ -553,12 +515,6 @@ class MySettingsTab:
         self.lb_shield_diameter.grid(column=2, row=0, sticky=tk.W, pady=(0, 10))
         self.txt_shield_diameter.grid(column=3, row=0, sticky=tk.W, pady=(0, 10), padx=(0, 10))
 
-        self.lb_shield_short_diameter.grid(column=2, row=0, sticky=tk.W, pady=(0, 10))
-        self.txt_shield_short_diameter.grid(column=3, row=0, sticky=tk.W, pady=(0, 10))
-
-        self.lb_shield_long_diameter.grid(column=2, row=1, sticky=tk.W, pady=(0, 10), padx=(0, 10))
-        self.txt_shield_long_diameter.grid(column=3, row=1, sticky=tk.W, pady=(0, 10), padx=(0, 10))
-
         self.lb_er_width.grid(column=2, row=2, sticky=tk.W, pady=(0, 10))
         self.txt_er_width.grid(column=3, row=2, sticky=tk.W, pady=(0, 10), padx=(0, 10))
 
@@ -573,7 +529,7 @@ class MySettingsTab:
 
         frm_f0 = tk.Frame(self.tab)
         lb_res_freq = tk.Label(frm_f0, font=myfont_bold, text="Resonant\nFreq. (MHz)", justify='left')
-        txt_res_freq = my_tk.NumInput(frm_f0, text=self.v_res_freq, width=7, bg="white", min_value=0)
+        txt_res_freq = my_tk.NumInput(frm_f0, text=self.settings.freq, width=7, bg="white", min_value=0)
         lb_res_freq.grid(row=0, sticky=tk.W)
         txt_res_freq.grid(row=2, sticky=tk.W)
 
@@ -589,32 +545,31 @@ class MySettingsTab:
         lbl_title.grid(column=1, row=0, sticky=tk.N + tk.EW, pady=(5, 10))
         lf_type_of_legs.grid(column=1, row=1, sticky=tk.NSEW, pady=(0, 10), padx=(5, 10))
         lf_type_of_er.grid(column=1, row=2, sticky=tk.NSEW, pady=(0, 10), padx=(5, 10))
-        lf_config.grid(column=2, row=0, rowspan=2, sticky=tk.NSEW, pady=(0, 10), padx=(0, 10))
+        self.lf_config.grid(column=2, row=0, rowspan=2, sticky=tk.NSEW, pady=(0, 10), padx=(0, 10))
         lf_nr_of_legs.grid(column=2, row=2, columnspan=2, sticky=tk.NSEW, pady=(0, 10))
         lf_dimensions.grid(column=1, row=3, columnspan=3, sticky=tk.NSEW, pady=(0, 10), padx=(5, 0))
         frm_f0.grid(column=3, row=0, rowspan=2, sticky=tk.NSEW)
         btn.grid(column=1, row=4, columnspan=3)
 
     def validateInputs(self):
-        inputs_ = {"Resonance Frequency": self.v_res_freq.get(),
-                   "Coil Diameter": self.v_coil_diameter.get(),
-                   "Coil Short Diameter": self.v_coil_short_diameter.get(),
-                   "Coil Long Diameter": self.v_coil_long_diameter.get(),
-                   "Shield Diameter": self.v_shield_diameter.get(),
-                   "Shield Short Diameter": self.v_shield_short_diameter.get(),
-                   "Shield Long Diameter": self.v_shield_long_diameter.get(),
-                   "Nr Of Legs": self.v_nr_of_legs.get(),
-                   "Leg Length": self.v_leg_length.get(),
-                   "Leg Width": self.v_leg_width.get(),
-                   "Leg OD": self.v_leg_od.get(),
-                   "Leg ID": self.v_leg_id.get(),
-                   "ER Width": self.v_er_width.get(),
-                   "ER OD": self.v_er_od.get(),
-                   "ER ID": self.v_er_id.get(),
-                   "Bandpass Capacitor": self.v_bp_cap.get()}
+        inputs_ = {"Coil shape": "Circle" if self.settings.setting_calc == CIRCLE else "Ellipse",
+                   "Resonance Frequency": self.settings.freq.get(),
+                   "Coil Diameter": self.settings.coil_diameter.get(),
+                   "Coil Short Diameter": self.settings.coil_diameter_short.get(),
+                   "Coil Long Diameter": self.settings.coil_diameter_long.get(),
+                   "Shield Diameter": self.settings.shield_diameter.get(),
+                   "Nr Of Legs": self.settings.nr_of_legs.get(),
+                   "Leg Length": self.settings.leg_length.get(),
+                   "Leg Width": self.settings.leg_width.get(),
+                   "Leg OD": self.settings.leg_od.get(),
+                   "Leg ID": self.settings.leg_id.get(),
+                   "ER Width": self.settings.er_width.get(),
+                   "ER OD": self.settings.er_od.get(),
+                   "ER ID": self.settings.er_id.get(),
+                   "Bandpass Capacitor": self.settings.bp_cap.get()}
 
         for key, value in inputs_.items():
-            if key == "Shield Diameter":
+            if key == "Shield Diameter":  # shield size can be zero (no shield)
                 continue
             if value == 0:
                 mb.showwarning("Input zero", "One or more inputs are zero.\nPlease input valid values.")
@@ -626,63 +581,34 @@ class MySettingsTab:
 
         return inputs_
 
-    def setDefaults(self):
-        self.v_res_freq.set(125.2)#298)
-        self.v_nr_of_legs.set(16)
-        self.v_coil_diameter.set(30)
-        self.v_shield_diameter.set(16.5*2)#34)
-        self.v_leg_length.set(25)#20)
-        self.v_leg_width.set(0.5)
-        self.v_leg_od.set(0.396)#1)
-        self.v_leg_id.set(0.246)#0.6)
-        self.v_er_width.set(1.5)#0.5)
-        self.v_er_od.set(1)
-        self.v_er_id.set(0.6)
-        self.v_bp_cap.set(56)
-
-        self.v_coil_shortaxis.set(self.parent.SHORT)
-        self.v_coil_short_diameter.set(7.6*2)#30)
-        self.v_coil_long_diameter.set(12.6*2)#40)
-        self.v_shield_short_diameter.set(16.5*2)#34)
-        self.v_shield_long_diameter.set(16.5*2)#44)
-
     def guiAdjust(self):
         # adjusts the settings tab when clicking radiobuttons
         # try:
-        if self.parent.menuBar.coil_shape.get() == self.parent.ELLIPSE:
+        if self.settings.setting_calc == ELLIPSE:
+            self.lf_config.grid_remove()
+            
             self.lb_coil_diameter.grid_remove()
             self.txt_coil_diameter.grid_remove()
-            self.lb_shield_diameter.grid_remove()
-            self.txt_shield_diameter.grid_remove()
 
             self.lb_coil_short_diameter.grid()
             self.txt_coil_short_diameter.grid()
             self.lb_coil_long_diameter.grid()
             self.txt_coil_long_diameter.grid()
 
-            self.lb_shield_short_diameter.grid()
-            self.txt_shield_short_diameter.grid()
-            self.lb_shield_long_diameter.grid()
-            self.txt_shield_long_diameter.grid()
         else:
+            self.lf_config.grid()
+
             self.lb_coil_diameter.grid()
             self.txt_coil_diameter.grid()
-            self.lb_shield_diameter.grid()
-            self.txt_shield_diameter.grid()
 
             self.lb_coil_short_diameter.grid_remove()
             self.txt_coil_short_diameter.grid_remove()
             self.lb_coil_long_diameter.grid_remove()
             self.txt_coil_long_diameter.grid_remove()
-
-            self.lb_shield_short_diameter.grid_remove()
-            self.txt_shield_short_diameter.grid_remove()
-            self.lb_shield_long_diameter.grid_remove()
-            self.txt_shield_long_diameter.grid_remove()
         # except AttributeError:
         # pass
 
-        if self.v_rb_legs_selected.get() == self.parent.RECT:
+        if self.settings.setting_leg_type.get() == RECT:
             self.lb_leg_width.grid()
             self.txt_leg_width.grid()
 
@@ -699,7 +625,7 @@ class MySettingsTab:
             self.lb_leg_id.grid()
             self.txt_leg_id.grid()
 
-        if self.v_rb_er_selected.get() == self.parent.RECT:
+        if self.settings.setting_er_type.get() == RECT:
             self.lb_er_width.grid()
             self.txt_er_width.grid()
 
@@ -722,7 +648,7 @@ class MySettingsTab:
             self.lb_seg_length.grid(row=4)
             self.txt_seg_length.grid(row=4)
 
-        if self.v_rb_config_selected.get() == self.parent.BANDPASS:
+        if self.settings.setting_coil_configuration.get() == BANDPASS:
             self.frm_bp.pack()
         else:
             self.frm_bp.pack_forget()
@@ -821,6 +747,9 @@ if __name__ == "__main__":
 
     myfont_small_bold = default_font.copy()  # small font
     myfont_small_bold.configure(weight="bold", size=9)
+
+    myfont_graph = myfont_small_bold.copy()  # small font
+    myfont_graph.configure(weight="bold", size=2)
 
     myfont_small = default_font.copy()  # small font
     myfont_small.configure(size=8)

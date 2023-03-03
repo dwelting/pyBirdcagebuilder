@@ -12,8 +12,6 @@ from lib.logging import logger
 import os
 
 
-
-
 class MyEntry(tk.Entry):
 	def __init__(self, *args, def_value=None, validate_on_focus_loss=False, read_only=False, decimals=None, **kwargs):
 		self.def_value = def_value
@@ -194,7 +192,6 @@ class MyScale(tk.Scale):
 		else:
 			button = '<Button-3>'
 		self.bind('<Button-1>', lambda e: self.event_generate(button, x=e.x, y=e.y))  # makes left-click behave like right-click, making the scale jump instantly to destination
-
 
 
 def getScreenDimensions():
