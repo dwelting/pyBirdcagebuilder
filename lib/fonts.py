@@ -26,3 +26,6 @@ class MyFonts:
 
         self.myfont_small = self.default_font.copy()  # small font
         self.myfont_small.configure(size=8)
+
+        self.myfont_underlined = self.default_font.copy()
+        self.myfont_underlined.configure(underline=True)

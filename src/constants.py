@@ -1,5 +1,5 @@
 """
-Description:    Library with constants/defines used in the rets of the program.
+Description:    Source file with constants/defines used in the rets of the program.
 Author:         Dimitri Welting
 Website:        http://github.com/dwelting/pyBirdcagebuilder
 License:        Copyright (c) 2023 Dimitri Welting. All rights reserved.
@@ -11,22 +11,39 @@ PROGRAM_NAME = "pyBirdcagebuilder"
 VERSION = "v0.2"
 WEBSITE = "github.com/dwelting/pyBirdcagebuilder"
 
-MAX_PRECISION = 2
+ICON_FOLDER = "icon/"
 
+MAX_PRECISION = 2
 MIN_LEGS = 8
 MAX_LEGS = 32
 
-ELLIPSE     = 0
-CIRCLE      = 1
+class Window:
+    X = 500
+    Y = 600
 
-HIGHPASS    = 1
-LOWPASS     = 2
-BANDPASS    = 3
-RECT        = 4
-TUBE        = 5
-LEG         = 6
-ER          = 7
-SHORT       = 10
-LONG        = 11
+class Config:
+    ELLIPSE = 0
+    CIRCLE = 1
+    DEFAULT = CIRCLE
 
-DEFAULT_SETTING = CIRCLE
+class Axis:
+    SHORT = 1
+    LONG = 2
+    DEFAULT = SHORT
+
+class Mode:
+    HIGHPASS = 1
+    LOWPASS = 2
+    BANDPASS = 3
+    DEFAULT = HIGHPASS
+
+class Shape:
+    RECT = 1
+    TUBE = 2
+    DEFAULT = RECT
+
+class Part:
+    LEG = 1
+    ER = 2
+    DEFAULT = LEG
+

@@ -209,7 +209,6 @@ def getScreenDimensions():
 
 
 def centerWindow(win, win_x, win_y):
-	import os
 	if os.name == 'posix':
 		w, h = getScreenDimensions() 	# only way in Linux to get a centered window on the primary screen with dual monitor
 	else:

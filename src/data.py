@@ -1,5 +1,5 @@
 """
-Description:    Library with classes used as storage for settings and results.
+Description:    Source file with classes used as storage for settings and results.
 Author:         Dimitri Welting
 Website:        http://github.com/dwelting/pyBirdcagebuilder
 License:        Copyright (c) 2023 Dimitri Welting. All rights reserved.
@@ -8,12 +8,12 @@ License:        Copyright (c) 2023 Dimitri Welting. All rights reserved.
 """
 
 import tkinter as tk
-from lib.constants import *
+import src.constants as const
 
 
-class SettingsDataClass:
+class Settings:
     def __init__(self):
-        self.setting_calc = DEFAULT_SETTING
+        self.setting_calc = const.Config.DEFAULT
         self.setting_coil_configuration = tk.IntVar()
         self.setting_coil_axis = tk.IntVar()
         self.setting_leg_type = tk.IntVar()
@@ -42,12 +42,12 @@ class SettingsDataClass:
         self.reset()
 
     def reset(self):
-        self.setting_calc = DEFAULT_SETTING
-        self.setting_coil_configuration.set(HIGHPASS)
-        self.setting_coil_axis.set(SHORT)
-        self.setting_leg_type.set(RECT)
-        self.setting_er_type.set(RECT)
-        self.setting_bp_cap_location.set(LEG)
+        self.setting_calc = const.Config.DEFAULT
+        self.setting_coil_configuration.set(const.Mode.DEFAULT)
+        self.setting_coil_axis.set(const.Axis.DEFAULT)
+        self.setting_leg_type.set(const.Shape.DEFAULT)
+        self.setting_er_type.set(const.Shape.DEFAULT)
+        self.setting_bp_cap_location.set(const.Part.DEFAULT)
 
         self.freq.set(298)  # variable for resonance frequency
         self.bp_cap.set(56)
@@ -69,31 +69,31 @@ class SettingsDataClass:
         self.shield_diameter.set(33)
 
 
-class ResultsDataClass:
+class Results:
     def __init__(self):
-        self.radius = [0.0 for _ in range(MAX_LEGS)]
-        self.thetas = [0.0 for _ in range(MAX_LEGS)]
-        self.x_coords = [0.0 for _ in range(MAX_LEGS)]
-        self.y_coords = [0.0 for _ in range(MAX_LEGS)]
-        self.leg_currs = [0.0 for _ in range(MAX_LEGS)]
-        self.er_currs = [0.0 for _ in range(MAX_LEGS)]
-        self.cap = [tk.DoubleVar(value=0.0) for _ in range(MAX_LEGS)]
-        self.leg_eff = [tk.DoubleVar(value=0.0) for _ in range(MAX_LEGS)]  # calculated effective inductance of legs
-        self.er_eff = [tk.DoubleVar(value=0.0) for _ in range(MAX_LEGS)]  # calculated effective inductance of end ring
+        self.radius = [0.0 for _ in range(const.MAX_LEGS)]
+        self.thetas = [0.0 for _ in range(const.MAX_LEGS)]
+        self.x_coords = [0.0 for _ in range(const.MAX_LEGS)]
+        self.y_coords = [0.0 for _ in range(const.MAX_LEGS)]
+        self.leg_currs = [0.0 for _ in range(const.MAX_LEGS)]
+        self.er_currs = [0.0 for _ in range(const.MAX_LEGS)]
+        self.cap = [tk.DoubleVar(value=0.0) for _ in range(const.MAX_LEGS)]
+        self.leg_eff = [tk.DoubleVar(value=0.0) for _ in range(const.MAX_LEGS)]  # calculated effective inductance of legs
+        self.er_eff = [tk.DoubleVar(value=0.0) for _ in range(const.MAX_LEGS)]  # calculated effective inductance of end ring
         self.leg_self = tk.DoubleVar(value=0.0)  # calculated self inductance of legs
         self.er_self = tk.DoubleVar(value=0.0)  # calculated self inductance of end ring
         self.er_segment_length = tk.DoubleVar(value=0)
 
     def reset(self):
-        self.radius[:MAX_LEGS] = [0] * MAX_LEGS
-        self.thetas[:MAX_LEGS] = [0] * MAX_LEGS
-        self.x_coords[:MAX_LEGS] = [0] * MAX_LEGS
-        self.y_coords[:MAX_LEGS] = [0] * MAX_LEGS
-        self.leg_currs[:MAX_LEGS] = [0] * MAX_LEGS
-        self.er_currs[:MAX_LEGS] = [0] * MAX_LEGS
-        [self.cap[i].set(0) for i in range(MAX_LEGS)]
-        [self.leg_eff[i].set(0) for i in range(MAX_LEGS)]  # calculated effective inductance of legs
-        [self.er_eff[i].set(0) for i in range(MAX_LEGS)]  # calculated effective inductance of end ring
+        self.radius[:const.MAX_LEGS] = [0] * const.MAX_LEGS
+        self.thetas[:const.MAX_LEGS] = [0] * const.MAX_LEGS
+        self.x_coords[:const.MAX_LEGS] = [0] * const.MAX_LEGS
+        self.y_coords[:const.MAX_LEGS] = [0] * const.MAX_LEGS
+        self.leg_currs[:const.MAX_LEGS] = [0] * const.MAX_LEGS
+        self.er_currs[:const.MAX_LEGS] = [0] * const.MAX_LEGS
+        [self.cap[i].set(0) for i in range(const.MAX_LEGS)]
+        [self.leg_eff[i].set(0) for i in range(const.MAX_LEGS)]  # calculated effective inductance of legs
+        [self.er_eff[i].set(0) for i in range(const.MAX_LEGS)]  # calculated effective inductance of end ring
         self.leg_self.set(0)  # calculated self inductance of legs
         self.er_self.set(0)  # calculated self inductance of end ring
         self.er_segment_length.set(0)
