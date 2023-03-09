@@ -1,4 +1,5 @@
 /Notes/*
+/build/*
 /.idea/*
 Thumbs.db
 *.directory 

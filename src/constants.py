@@ -8,7 +8,7 @@ License:        Copyright (c) 2023 Dimitri Welting. All rights reserved.
 """
 
 PROGRAM_NAME = "pyBirdcagebuilder"
-VERSION = "v0.2"
+VERSION = "v0.2.1"
 WEBSITE = "github.com/dwelting/pyBirdcagebuilder"
 
 ICON_FOLDER = "icon/"
